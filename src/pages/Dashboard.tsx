@@ -32,11 +32,31 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const stats = [
-    { label: "Connections", value: "24", icon: Users, color: "bg-wine-medium" },
-    { label: "Job Opportunities", value: "8", icon: Briefcase, color: "bg-wine-dark" },
-    { label: "Upcoming Events", value: "4", icon: Calendar, color: "bg-secondary" },
-  ];
+  const [stats, setStats] = useState([
+    { label: "Connections", value: "0", icon: Users, color: "bg-wine-medium" },
+    { label: "Job Applications", value: "0", icon: Briefcase, color: "bg-wine-dark" },
+    { label: "Registered Events", value: "0", icon: Calendar, color: "bg-secondary" },
+  ]);
+
+  useEffect(() => {
+    const updateStats = () => {
+      const connections = JSON.parse(localStorage.getItem('connections') || '[]');
+      const appliedJobs = JSON.parse(localStorage.getItem('appliedJobs') || '[]');
+      const registeredEvents = JSON.parse(localStorage.getItem('registeredEvents') || '[]');
+      
+      setStats([
+        { label: "Connections", value: connections.length.toString(), icon: Users, color: "bg-wine-medium" },
+        { label: "Job Applications", value: appliedJobs.length.toString(), icon: Briefcase, color: "bg-wine-dark" },
+        { label: "Registered Events", value: registeredEvents.length.toString(), icon: Calendar, color: "bg-secondary" },
+      ]);
+    };
+
+    updateStats();
+    
+    // Poll for updates every 2 seconds
+    const interval = setInterval(updateStats, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const recentActivity = [
     { icon: Users, text: "Sarah Johnson accepted your connection", time: "2 hours ago" },

@@ -41,21 +41,32 @@ const Profile = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUserEmail(session.user.email || "");
-        setProfile(prev => ({
-          ...prev,
-          fullName: session.user.user_metadata.full_name || prev.fullName
-        }));
+        
+        // Load profile from localStorage
+        const savedProfile = localStorage.getItem(`profile_${session.user.id}`);
+        if (savedProfile) {
+          setProfile(JSON.parse(savedProfile));
+        } else {
+          setProfile(prev => ({
+            ...prev,
+            fullName: session.user.user_metadata.full_name || prev.fullName
+          }));
+        }
       }
     };
     getUser();
   }, []);
 
-  const handleSave = () => {
-    toast({
-      title: "Profile updated",
-      description: "Your changes have been saved successfully",
-    });
-    setIsEditing(false);
+  const handleSave = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      localStorage.setItem(`profile_${session.user.id}`, JSON.stringify(profile));
+      toast({
+        title: "Profile updated",
+        description: "Your changes have been saved successfully",
+      });
+      setIsEditing(false);
+    }
   };
 
   const getInitials = (name: string) => {

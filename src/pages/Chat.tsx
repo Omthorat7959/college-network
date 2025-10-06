@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,9 +25,36 @@ const Chat = () => {
   const [selectedChat, setSelectedChat] = useState(mockChats[0]);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [messages, setMessages] = useState(mockMessages);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`chat_${selectedChat.id}`);
+    if (saved) {
+      setMessages(JSON.parse(saved));
+    } else {
+      setMessages(mockMessages);
+    }
+  }, [selectedChat.id]);
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("");
+  };
+
+  const handleSendMessage = () => {
+    if (!newMessage.trim()) return;
+
+    const newMsg = {
+      id: messages.length + 1,
+      sender: "You",
+      text: newMessage,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isMine: true
+    };
+
+    const updatedMessages = [...messages, newMsg];
+    setMessages(updatedMessages);
+    localStorage.setItem(`chat_${selectedChat.id}`, JSON.stringify(updatedMessages));
+    setNewMessage("");
   };
 
   const filteredChats = mockChats.filter(chat =>
@@ -127,7 +154,7 @@ const Chat = () => {
               <CardContent className="p-0">
                 <ScrollArea className="h-[480px] p-4">
                   <div className="space-y-4">
-                    {mockMessages.map((message) => (
+                    {messages.map((message) => (
                       <div
                         key={message.id}
                         className={`flex ${message.isMine ? "justify-end" : "justify-start"}`}
@@ -159,11 +186,11 @@ const Chat = () => {
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={(e) => {
                         if (e.key === "Enter" && newMessage.trim()) {
-                          setNewMessage("");
+                          handleSendMessage();
                         }
                       }}
                     />
-                    <Button size="icon">
+                    <Button size="icon" onClick={handleSendMessage}>
                       <Send className="w-4 h-4" />
                     </Button>
                   </div>

@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, Clock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const mockEvents = [
   {
@@ -48,6 +50,16 @@ const mockEvents = [
 ];
 
 const Events = () => {
+  const [registeredEvents, setRegisteredEvents] = useState<number[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const saved = localStorage.getItem('registeredEvents');
+    if (saved) {
+      setRegisteredEvents(JSON.parse(saved));
+    }
+  }, []);
+
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
       "Reunion": "bg-wine-medium",
@@ -57,6 +69,39 @@ const Events = () => {
     };
     return colors[category] || "bg-primary";
   };
+
+  const handleRegister = (eventId: number, eventTitle: string) => {
+    if (registeredEvents.includes(eventId)) {
+      const updated = registeredEvents.filter(id => id !== eventId);
+      setRegisteredEvents(updated);
+      localStorage.setItem('registeredEvents', JSON.stringify(updated));
+      toast({
+        title: "Registration cancelled",
+        description: `You've unregistered from ${eventTitle}`,
+      });
+    } else {
+      const updated = [...registeredEvents, eventId];
+      setRegisteredEvents(updated);
+      localStorage.setItem('registeredEvents', JSON.stringify(updated));
+      
+      // Add notification
+      const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+      notifications.unshift({
+        id: Date.now(),
+        text: `Registered for ${eventTitle}`,
+        time: 'Just now',
+        read: false
+      });
+      localStorage.setItem('notifications', JSON.stringify(notifications));
+      
+      toast({
+        title: "Registered successfully!",
+        description: `You're registered for ${eventTitle}`,
+      });
+    }
+  };
+
+  const isRegistered = (eventId: number) => registeredEvents.includes(eventId);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -108,7 +153,13 @@ const Events = () => {
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t">
-                    <Button className="flex-1">Register Now</Button>
+                    <Button 
+                      className="flex-1"
+                      onClick={() => handleRegister(event.id, event.title)}
+                      variant={isRegistered(event.id) ? "outline" : "default"}
+                    >
+                      {isRegistered(event.id) ? "Registered ✓" : "Register Now"}
+                    </Button>
                     <Button variant="outline">Learn More</Button>
                   </div>
                 </CardContent>

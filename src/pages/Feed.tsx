@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,20 @@ const mockPosts = [
 
 const Feed = () => {
   const [newPost, setNewPost] = useState("");
+  const [posts, setPosts] = useState(mockPosts);
+  const [likedPosts, setLikedPosts] = useState<number[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const savedPosts = localStorage.getItem('posts');
+    if (savedPosts) {
+      setPosts(JSON.parse(savedPosts));
+    }
+    const savedLikes = localStorage.getItem('likedPosts');
+    if (savedLikes) {
+      setLikedPosts(JSON.parse(savedLikes));
+    }
+  }, []);
 
   const handlePost = () => {
     if (!newPost.trim()) {
@@ -51,12 +64,55 @@ const Feed = () => {
       return;
     }
 
+    const newPostObj = {
+      id: Date.now(),
+      author: "You",
+      role: "Alumni Member",
+      content: newPost,
+      likes: 0,
+      comments: 0,
+      timestamp: "Just now"
+    };
+
+    const updatedPosts = [newPostObj, ...posts];
+    setPosts(updatedPosts);
+    localStorage.setItem('posts', JSON.stringify(updatedPosts));
+    
+    // Add notification
+    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+    notifications.unshift({
+      id: Date.now(),
+      text: 'Your post has been published',
+      time: 'Just now',
+      read: false
+    });
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+
     toast({
       title: "Success",
       description: "Your post has been shared!",
     });
     setNewPost("");
   };
+
+  const handleLike = (postId: number) => {
+    const updatedLikes = likedPosts.includes(postId)
+      ? likedPosts.filter(id => id !== postId)
+      : [...likedPosts, postId];
+    
+    setLikedPosts(updatedLikes);
+    localStorage.setItem('likedPosts', JSON.stringify(updatedLikes));
+
+    const updatedPosts = posts.map(post =>
+      post.id === postId
+        ? { ...post, likes: likedPosts.includes(postId) ? post.likes - 1 : post.likes + 1 }
+        : post
+    );
+    setPosts(updatedPosts);
+    localStorage.setItem('posts', JSON.stringify(updatedPosts));
+  };
+
+  const isLiked = (postId: number) => likedPosts.includes(postId);
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("");
@@ -116,8 +172,13 @@ const Feed = () => {
                   <p className="text-foreground">{post.content}</p>
                   
                   <div className="flex items-center gap-6 pt-2 border-t">
-                    <Button variant="ghost" size="sm" className="gap-2">
-                      <Heart className="w-4 h-4" />
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="gap-2"
+                      onClick={() => handleLike(post.id)}
+                    >
+                      <Heart className={`w-4 h-4 ${isLiked(post.id) ? 'fill-red-500 text-red-500' : ''}`} />
                       <span className="text-sm">{post.likes}</span>
                     </Button>
                     <Button variant="ghost" size="sm" className="gap-2">

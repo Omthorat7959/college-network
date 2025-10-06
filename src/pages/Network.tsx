@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,15 @@ const Network = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
+  const [connections, setConnections] = useState<number[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const savedConnections = localStorage.getItem('connections');
+    if (savedConnections) {
+      setConnections(JSON.parse(savedConnections));
+    }
+  }, []);
 
   const filteredUsers = mockUsers.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -42,6 +52,29 @@ const Network = () => {
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("");
   };
+
+  const handleConnect = (userId: number, userName: string) => {
+    const newConnections = [...connections, userId];
+    setConnections(newConnections);
+    localStorage.setItem('connections', JSON.stringify(newConnections));
+    
+    // Add notification
+    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+    notifications.unshift({
+      id: Date.now(),
+      text: `You connected with ${userName}`,
+      time: 'Just now',
+      read: false
+    });
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+    
+    toast({
+      title: "Connection sent!",
+      description: `You are now connected with ${userName}`,
+    });
+  };
+
+  const isConnected = (userId: number) => connections.includes(userId);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -128,9 +161,15 @@ const Network = () => {
                   </div>
                   <p className="text-sm text-muted-foreground">{user.company}</p>
                   <div className="flex gap-2">
-                    <Button size="sm" className="flex-1">
+                    <Button 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleConnect(user.id, user.name)}
+                      disabled={isConnected(user.id)}
+                      variant={isConnected(user.id) ? "outline" : "default"}
+                    >
                       <UserPlus className="w-4 h-4 mr-2" />
-                      Connect
+                      {isConnected(user.id) ? "Connected" : "Connect"}
                     </Button>
                     <Button size="sm" variant="outline">
                       <Mail className="w-4 h-4" />

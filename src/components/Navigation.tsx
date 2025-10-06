@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -21,17 +22,29 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
-const mockNotifications = [
-  { id: 1, text: "Sarah Johnson accepted your connection", time: "2 hours ago", unread: true },
-  { id: 2, text: "New message from Michael Chen", time: "5 hours ago", unread: true },
-  { id: 3, text: "TechConf 2025 registration opens tomorrow", time: "1 day ago", unread: false },
-];
-
 const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const unreadCount = mockNotifications.filter(n => n.unread).length;
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Load notifications from localStorage
+    const loadNotifications = () => {
+      const saved = localStorage.getItem('notifications');
+      if (saved) {
+        setNotifications(JSON.parse(saved));
+      }
+    };
+    
+    loadNotifications();
+    
+    // Poll for new notifications every 2 seconds
+    const interval = setInterval(loadNotifications, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -39,6 +52,23 @@ const Navigation = () => {
       title: "Signed out successfully",
     });
     navigate("/");
+  };
+
+  const markAsRead = (notificationId: number) => {
+    const updated = notifications.map(n =>
+      n.id === notificationId ? { ...n, read: true } : n
+    );
+    setNotifications(updated);
+    localStorage.setItem('notifications', JSON.stringify(updated));
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    localStorage.setItem('notifications', JSON.stringify([]));
+    toast({
+      title: "Notifications cleared",
+      description: "All notifications have been removed",
+    });
   };
 
   const navItems = [
@@ -92,25 +122,44 @@ const Navigation = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 bg-background">
                 <div className="p-2">
-                  <h3 className="font-semibold mb-2 px-2">Notifications</h3>
-                  {mockNotifications.map((notification) => (
-                    <DropdownMenuItem
-                      key={notification.id}
-                      className={`flex flex-col items-start p-3 cursor-pointer ${
-                        notification.unread ? "bg-muted/50" : ""
-                      }`}
-                    >
-                      <div className="flex items-start justify-between w-full">
-                        <p className="text-sm flex-1">{notification.text}</p>
-                        {notification.unread && (
-                          <div className="w-2 h-2 bg-wine-medium rounded-full mt-1 ml-2" />
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground mt-1">
-                        {notification.time}
-                      </span>
-                    </DropdownMenuItem>
-                  ))}
+                  <div className="flex items-center justify-between mb-2 px-2">
+                    <h3 className="font-semibold">Notifications</h3>
+                    {notifications.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearAllNotifications}
+                        className="text-xs h-6"
+                      >
+                        Clear All
+                      </Button>
+                    )}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No notifications yet
+                    </p>
+                  ) : (
+                    notifications.map((notification) => (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        className={`flex flex-col items-start p-3 cursor-pointer ${
+                          !notification.read ? "bg-muted/50" : ""
+                        }`}
+                        onClick={() => markAsRead(notification.id)}
+                      >
+                        <div className="flex items-start justify-between w-full">
+                          <p className="text-sm flex-1">{notification.text}</p>
+                          {!notification.read && (
+                            <div className="w-2 h-2 bg-wine-medium rounded-full mt-1 ml-2" />
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground mt-1">
+                          {notification.time}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>

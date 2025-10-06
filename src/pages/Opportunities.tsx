@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Briefcase, MapPin, DollarSign, Clock, ExternalLink } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const mockJobs = [
   {
@@ -52,6 +54,48 @@ const mockJobs = [
 ];
 
 const Opportunities = () => {
+  const [appliedJobs, setAppliedJobs] = useState<number[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const saved = localStorage.getItem('appliedJobs');
+    if (saved) {
+      setAppliedJobs(JSON.parse(saved));
+    }
+  }, []);
+
+  const handleApply = (jobId: number, jobTitle: string) => {
+    if (appliedJobs.includes(jobId)) {
+      toast({
+        title: "Already applied",
+        description: "You've already applied to this position",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updated = [...appliedJobs, jobId];
+    setAppliedJobs(updated);
+    localStorage.setItem('appliedJobs', JSON.stringify(updated));
+    
+    // Add notification
+    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+    notifications.unshift({
+      id: Date.now(),
+      text: `Applied to ${jobTitle}`,
+      time: 'Just now',
+      read: false
+    });
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+    
+    toast({
+      title: "Application submitted!",
+      description: `Your application for ${jobTitle} has been sent`,
+    });
+  };
+
+  const hasApplied = (jobId: number) => appliedJobs.includes(jobId);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <Navigation />
@@ -102,8 +146,12 @@ const Opportunities = () => {
 
                   <div className="flex items-center justify-between pt-4 border-t">
                     <p className="text-sm text-muted-foreground">Posted by {job.postedBy}</p>
-                    <Button>
-                      Apply Now
+                    <Button
+                      onClick={() => handleApply(job.id, job.title)}
+                      disabled={hasApplied(job.id)}
+                      variant={hasApplied(job.id) ? "outline" : "default"}
+                    >
+                      {hasApplied(job.id) ? "Applied ✓" : "Apply Now"}
                       <ExternalLink className="w-4 h-4 ml-2" />
                     </Button>
                   </div>
